@@ -1,0 +1,39 @@
+FROM python:3.11-bullseye
+
+
+# Installer dépendances système de base
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    gnupg \
+    apt-transport-https \
+    build-essential \
+    unixodbc \
+    unixodbc-dev \
+    libssl-dev \
+    libffi-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Ajouter la clé Microsoft et le repo
+RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
+    curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
+
+# Mettre à jour apt et installer msodbcsql18 avec correction des dépendances
+RUN apt-get update && \
+    ACCEPT_EULA=Y apt-get install -y msodbcsql18 || apt-get install -f -y && \
+    rm -rf /var/lib/apt/lists/*
+    
+WORKDIR /app
+
+# Copier requirements.txt spécifique à allocine_scrapping
+COPY requirements.txt .
+
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
+
+# Copier le code source de allocine_scrapping
+COPY . .
+
+# Commande par défaut : lancer le runner Python
+CMD ["python", "allocine_scrapping/runner_releases.py"]
